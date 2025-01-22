@@ -8,65 +8,83 @@ namespace GizWebApp.Controllers
 	[Route("[controller]")]
 	public class ProductController : ControllerBase
 	{
-		private readonly IProductRepository _productRepository;
+		private readonly ProductRepository _productRepository;
 
-		public ProductController(IProductRepository productRepository)
+		public ProductController(ProductRepository productRepository)
 		{
 			_productRepository = productRepository;
 		}
 
 		[HttpGet]
-		public async Task<IActionResult> GetAll()
+		public async Task<ActionResult> GetProducts()
 		{
-			var products = await _productRepository.GetAllAsync();
-			return Ok(products);
-		}
-
-		[HttpGet("{id}")]
-		public async Task<IActionResult> GetById(int id)
-		{
-			var product = await _productRepository.GetByIdAsync(id);
-			if (product == null)
+			try
 			{
-				return NotFound();
+				var products = await _productRepository.GetProducts();
+				return Ok(new { Success = true, Message = "Products retrieved successfully.", Data = products });
 			}
-			return Ok(product);
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { Success = false, Message = "An error occurred.", Details = ex.Message });
+			}
 		}
 
 		[HttpPost]
-		public async Task<IActionResult> Create(Product product)
+		public async Task<ActionResult> AddProduct(Product product)
 		{
-			await _productRepository.AddAsync(product);
-			return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
-		}
-
-		[HttpPut("{id}")]
-		public async Task<IActionResult> Update(int id, Product product)
-		{
-			if (id != product.Id)
+			try
 			{
-				return BadRequest();
+				await _productRepository.SaveEmp(product);
+				return Ok(new { Success = true, Message = "Product added successfully." });
 			}
-
-			var updated = await _productRepository.UpdateAsync(product);
-			if (!updated)
+			catch (Exception ex)
 			{
-				return NotFound();
+				return StatusCode(500, new { Success = false, Message = "An error occurred.", Details = ex.Message });
 			}
-
-			return NoContent();
 		}
 
 		[HttpDelete("{id}")]
-		public async Task<IActionResult> Delete(int id)
+		public async Task<ActionResult> DeleteProduct(int id)
 		{
-			var deleted = await _productRepository.DeleteAsync(id);
-			if (!deleted)
+			try
 			{
-				return NotFound();
+				var emp = await _productRepository.GetEmpById(id);
+				if (emp == null)
+				{
+					return NotFound(new { Success = false, Message = "Product not found." });
+				}
+				await _productRepository.DeleteEmp(id);
+				return Ok(new { Success = true, Message = "Product deleted successfully." });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { Success = false, Message = "An error occurred.", Details = ex.Message });
+			}
+		}
+
+		[HttpPut("{id}")]
+		public async Task<ActionResult> UpdateProduct(int id, Product product)
+		{
+			if (id != product.Id)
+			{
+				return BadRequest(new { Success = false, Message = "Product ID mismatch." });
 			}
 
-			return NoContent();
+			var existingProduct = await _productRepository.GetEmpById(id);
+			if (existingProduct == null)
+			{
+				return NotFound(new { Success = false, Message = "Product not found." });
+			}
+
+			try
+			{
+				await _productRepository.UpdateEmp(product);
+				return Ok(new { Success = true, Message = "Product updated successfully." });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { Success = false, Message = "An error occurred.", Details = ex.Message });
+			}
 		}
 	}
 }
